@@ -1,15 +1,12 @@
 import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import {
-  atLeastHaVersion,
   fireEvent,
   HASSDomEvent,
   HomeAssistant,
   LovelaceConfig,
 } from "../../../ha";
 import setupCustomlocalize from "../../../localize";
-import "../../../shared/form/mushroom-select";
-import "../../../shared/form/mushroom-textfield";
 import { loadHaComponents } from "../../../utils/loader";
 import { getChipElementClass } from "../../../utils/lovelace/chip-element-editor";
 import { computeChipEditorComponentName } from "../../../utils/lovelace/chip/chip-element";
@@ -63,39 +60,20 @@ export class ConditionalChipEditor
     const customLocalize = setupCustomlocalize(this.hass);
 
     return html`
-      ${atLeastHaVersion(this.hass.connection.haVersion, 2025, 10)
-        ? html`
-            <ha-tab-group @wa-tab-show=${this._selectTab}>
-              <ha-tab-group-tab
-                slot="nav"
-                panel="conditions"
-                .active=${!this._cardTab}
-              >
-                ${this.hass!.localize(
-                  "ui.panel.lovelace.editor.card.conditional.conditions"
-                )}
-              </ha-tab-group-tab>
-              <ha-tab-group-tab
-                slot="nav"
-                panel="chip"
-                .active=${this._cardTab}
-              >
-                ${customLocalize("editor.chip.conditional.chip")}
-              </ha-tab-group-tab>
-            </ha-tab-group>
-          `
-        : html`
-            <sl-tab-group @sl-tab-show=${this._selectTab}>
-              <sl-tab slot="nav" panel="conditions" .active=${!this._cardTab}>
-                ${this.hass!.localize(
-                  "ui.panel.lovelace.editor.card.conditional.conditions"
-                )}
-              </sl-tab>
-              <sl-tab slot="nav" panel="chip" .active=${this._cardTab}>
-                ${customLocalize("editor.chip.conditional.chip")}
-              </sl-tab>
-            </sl-tab-group>
-          `}
+      <ha-tab-group @wa-tab-show=${this._selectTab}>
+        <ha-tab-group-tab
+          slot="nav"
+          panel="conditions"
+          .active=${!this._cardTab}
+        >
+          ${this.hass!.localize(
+            "ui.panel.lovelace.editor.card.conditional.conditions"
+          )}
+        </ha-tab-group-tab>
+        <ha-tab-group-tab slot="nav" panel="chip" .active=${this._cardTab}>
+          ${customLocalize("editor.chip.conditional.chip")}
+        </ha-tab-group-tab>
+      </ha-tab-group>
       ${this._cardTab
         ? html`
             <div class="card">
@@ -129,23 +107,16 @@ export class ConditionalChipEditor
                     ></mushroom-chip-element-editor>
                   `
                 : html`
-                    <mushroom-select
+                    <ha-select
                       .label=${customLocalize("editor.chip.chip-picker.select")}
+                      .options=${CHIP_LIST.map((chip) => ({
+                        value: chip,
+                        label: customLocalize(
+                          `editor.chip.chip-picker.types.${chip}`
+                        ),
+                      }))}
                       @selected=${this._handleChipPicked}
-                      @closed=${(e) => e.stopPropagation()}
-                      fixedMenuPosition
-                      naturalMenuWidth
-                    >
-                      ${CHIP_LIST.map(
-                        (chip) => html`
-                          <mwc-list-item .value=${chip}>
-                            ${customLocalize(
-                              `editor.chip.chip-picker.types.${chip}`
-                            )}
-                          </mwc-list-item>
-                        `
-                      )}
-                    </mushroom-select>
+                    ></ha-select>
                   `}
             </div>
           `
@@ -180,8 +151,10 @@ export class ConditionalChipEditor
     this._guiModeAvailable = ev.detail.guiModeAvailable;
   }
 
-  private async _handleChipPicked(ev: CustomEvent): Promise<void> {
-    const value = (ev.target as any).value;
+  private async _handleChipPicked(
+    ev: CustomEvent<{ value?: string }>
+  ): Promise<void> {
+    const value = ev.detail.value ?? "";
 
     if (value === "") {
       return;
@@ -194,7 +167,7 @@ export class ConditionalChipEditor
     if (elClass && elClass.getStubConfig) {
       newChip = (await elClass.getStubConfig(this.hass)) as LovelaceChipConfig;
     } else {
-      newChip = { type: value };
+      newChip = { type: value } as LovelaceChipConfig;
     }
 
     (ev.target as any).value = "";
@@ -244,14 +217,6 @@ export class ConditionalChipEditor
 
   static get styles(): CSSResultGroup {
     return css`
-      sl-tab {
-        flex: 1;
-      }
-      sl-tab::part(base) {
-        width: 100%;
-        justify-content: center;
-      }
-
       ha-tab-group-tab {
         flex: 1;
       }
@@ -264,7 +229,7 @@ export class ConditionalChipEditor
         border: 1px solid var(--divider-color);
         padding: 12px;
       }
-      .card mushroom-select {
+      .card ha-select {
         width: 100%;
         margin-top: 0px;
       }
